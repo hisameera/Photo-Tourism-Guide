@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 const decode = (base64: string): Uint8Array => {
@@ -43,4 +42,71 @@ export const useAudioPlayer = (base64Audio: string | null) => {
         // @ts-ignore
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (AudioContext) {
-            audioContext
+            audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+        }
+    }
+    
+    // Decode audio data when it becomes available
+    const prepareAudio = async () => {
+      if (base64Audio && audioContextRef.current && !audioBufferRef.current) {
+        try {
+          const audioBytes = decode(base64Audio);
+          const buffer = await decodeAudioData(audioBytes, audioContextRef.current, 24000, 1);
+          audioBufferRef.current = buffer;
+        } catch (error) {
+          console.error("Failed to decode audio data:", error);
+        }
+      }
+    };
+    prepareAudio();
+    
+    // Cleanup function
+    return () => {
+        if(sourceRef.current) {
+            sourceRef.current.stop();
+            sourceRef.current.disconnect();
+        }
+        // Don't close the audio context, as it can cause issues on re-renders/fast updates
+    };
+  }, [base64Audio]);
+
+  const play = useCallback(() => {
+    if (!audioBufferRef.current || !audioContextRef.current) return;
+    if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+    }
+    // If there's an existing source, stop it before creating a new one
+    if(sourceRef.current) {
+        sourceRef.current.stop();
+        sourceRef.current.disconnect();
+    }
+    const source = audioContextRef.current.createBufferSource();
+    source.buffer = audioBufferRef.current;
+    source.connect(audioContextRef.current.destination);
+    source.start();
+    source.onended = () => {
+      setIsPlaying(false);
+    };
+    sourceRef.current = source;
+    setIsPlaying(true);
+  }, []);
+
+  const pause = useCallback(() => {
+    if (sourceRef.current) {
+      sourceRef.current.stop();
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
+    }
+    setIsPlaying(false);
+  }, []);
+  
+  const togglePlayPause = useCallback(() => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
+  }, [isPlaying, play, pause]);
+
+  return { isPlaying, togglePlayPause };
+};

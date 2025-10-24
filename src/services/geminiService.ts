@@ -1,11 +1,11 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { AnalysisResult, GroundingSource } from "../types";
 
-// In a Vite project, environment variables for the browser MUST be prefixed with VITE_
-const API_KEY = import.meta.env.VITE_API_KEY;
+// Per coding guidelines, API key must come from process.env.API_KEY
+const API_KEY = process.env.API_KEY;
 
 if (!API_KEY) {
-  throw new Error("VITE_API_KEY environment variable not set. Please ensure it's configured in your Vercel project settings.");
+  throw new Error("API_KEY environment variable not set");
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
